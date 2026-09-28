@@ -1,5 +1,3 @@
-#需要自行将配置文件中的相机参数补全
-
 yolo_name: yolov5
 yolov5_model_path: assets/yolov5.xml
 device: CPU
@@ -13,14 +11,13 @@ roi:
 
 use_roi: false
 threshold: 150
-# ---------------- 以下为 lecture4 新增：取帧方式 ----------------
-# video  : 从 video.path 读视频（默认，人人能跑，便于课上对答案）
-# camera : 用 hikrobot 相机（需要 -DWITH_HIKROBOT=ON 且装好 MVS SDK）
+# video  : 从 video.path 读视频
+# camera : 用 hikrobot 相机
 source: video
 video:
   path: assets/video.avi
-  loop: true          # 读到结尾自动重头，避免课堂演示跑到黑屏
-camera:
-  exposure_ms: 2.5
-  gain: 16.9
-  vid_pid: "2bdf:0001"
+# loop: true
+# camera:
+#   exposure_ms: 2.5
+#   gain: 16.9
+#   vid_pid: "2bdf:0001"

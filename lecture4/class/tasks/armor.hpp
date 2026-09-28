@@ -94,7 +94,7 @@ struct Armor
   Lightbar left, right;     
   cv::Point2f center;       
   cv::Point2f center_norm;  
-  std::vector<cv::Point2f> points;  // 关键点的图像坐标，顺序为左上、左下、右下、右上
+  std::vector<cv::Point2f> points;  // 关键点的图像坐标，顺序为左上、左下、右下、右上（吗？）
 
   double ratio;              
   double side_ratio;         

@@ -36,8 +36,7 @@ static const double ARMOR_WIDTH = 0.135;     // 装甲板宽度  单位：米
 // - 装甲板坐标系是三维的坐标系，但是四个点都在 z 坐标为 0 的平面上，所以已经为你填写了四个 0 。
 // - 在上方定义有 灯条长度 和 装甲板宽度，你应当用 "± ARMOR_WIDTH / 2" 这样的写法来填写。
 // - 点序规定：左上、右上、右下、左下（自左上顺时针）。这个顺序必须和 Task02 的 img_points 一一对应。
-//   ⚠ Armor::points 的真实顺序就是上面这个，**不是** tasks/armor.hpp 注释里写的那个。
-//     详见 docs/keypoint_order.md —— 顺序写反了位姿会错得非常隐蔽。
+//   ⚠ Armor::points 的真实顺序就是上面这个，不是 tasks/armor.hpp 注释里写的那个。
 // #########################################################
 
 int main(int argc, char *argv[])
@@ -60,7 +59,13 @@ int main(int argc, char *argv[])
         {
             auto armor = armors.front();           // 取第一个装甲板
             tools::draw_points(img, armor.points); // 绘制装甲板 4 个关键点
-
+            // 临时：验证 armor.points 的真实顺序
+            for (int i = 0; i < 4; i++)
+                tools::draw_text(img, std::to_string(i), armor.points[i], cv::Scalar(255, 0, 255), 1.5, 3);
+            fmt::print("0:({:.0f},{:.0f}) 1:({:.0f},{:.0f}) 2:({:.0f},{:.0f}) 3:({:.0f},{:.0f})\n",
+                    armor.points[0].x, armor.points[0].y, armor.points[1].x, armor.points[1].y,
+                    armor.points[2].x, armor.points[2].y, armor.points[3].x, armor.points[3].y);
+                
             // #### Task 02 ############################################
             // img_points 是 像素坐标系下 n个点 的坐标，也就是照片上装甲板 4 个点的坐标。
             // 请你填写下面的 img_points:
