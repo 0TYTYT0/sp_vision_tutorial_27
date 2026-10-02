@@ -2,7 +2,7 @@
 
 ## Windows 环境配置
 
-### 安装uv
+### 1.安装uv
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
@@ -18,7 +18,7 @@ $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
 uv --version
 ```
 
-### 3. 安装项目 Python 和依赖
+### 2.安装项目 Python 和依赖
 
 先进入 `lecture5` 文件夹，后执行下列命令
 ```powershell
@@ -28,9 +28,9 @@ uv sync --dev
 uv run python --version
 ```
 
-### 4. 启动仿真
+### 3.启动仿真
 
-在 `lecture5` 文件夹中选择一个主程序运行：
+在 `lecture5` 文件夹中运行主程序：
 
 ```powershell
 # 匀速往返平移
