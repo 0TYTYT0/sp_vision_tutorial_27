@@ -1,7 +1,5 @@
 """入口二：纯匀速旋转，比较 angle/角速度真值、预测和估计。"""
 
-from dataclasses import dataclass, field
-
 import numpy as np
 
 from aim.solver import Solver
@@ -10,50 +8,66 @@ from utils.ekf import ExtendedKalmanFilter, FloatArray
 from utils.visualizer import RerunVisualizer
 
 
-@dataclass
-class Config:
-    # 状态排列为 [angle, angular_velocity]，单位 rad、rad/s。
-    duration: float = 20.0
-    dt: float = 1.0 / 60.0
-    seed: int = 42
-    position: tuple[float, float, float] = (3.0, 0.0, 0.1)
-    initial_angle: float = 0.0
-    angular_velocity: float = 6.0
-    radius: float = 0.26
-    x0: FloatArray = field(default_factory=lambda: np.array([0.4, 0.0]))
-    p0: FloatArray = field(default_factory=lambda: np.diag([0.5**2, 2.0**2]))
-    pixel_noise_std: float = 1.0
-    # R 只有 angle 的方差；角速度没有直接量测，由连续帧中的角度变化估计。
-    r: FloatArray = field(default_factory=lambda: np.array([[0.08**2]]))
-    process_angular_acceleration_std: float = 0.8
+# 状态顺序：[angle, angular_velocity]，单位分别为 rad、rad/s。
+
+# 1. 初始状态 X0
+X0: list[float] = [
+    0.4,  # 初始角度 (rad)
+    0.0,  # 初始角速度 (rad/s)
+]
+
+# 2. 初始协方差 P0
+# 数值越大，表示越不相信对应的初始状态。
+P0_DIAG: list[float] = [0.25, 4.0]
+
+# 3. 过程噪声 Q
+# 数值越大，通常对运动变化响应越快；越小，通常更平滑但换向滞后更明显。
+SIGMA_W: float = 4 # 角加速度标准差 (rad/s²)
+
+# 4. 量测协方差 R 
+# 数值越大，越不相信本帧量测；越小，越跟随量测。
+R_DIAG: list[float] = [0.08**2]
+
+
+PIXEL_NOISE_STD: float = 1.0
+DURATION: float = 20.0
+DT: float = 1.0 / 60.0
+SEED: int = 42
+POSITION: tuple[float, float, float] = (3.0, 0.0, 0.1)
+INITIAL_ANGLE: float = 0.0
+ANGULAR_VELOCITY: float = 6.0
+ROBOT_RADIUS: float = 0.26
 
 
 def angle_residual(observed: FloatArray, predicted: FloatArray) -> FloatArray:
     return np.array([wrap_angle(float(observed[0] - predicted[0]))])
 
 
-def run_demo(config: Config) -> None:
-    if config.duration <= 0 or config.dt <= 0 or config.radius <= 0:
+def run_demo() -> None:
+    x0 = np.array(X0, dtype=float)
+    p0 = np.diag(P0_DIAG)
+    r = np.diag(R_DIAG)
+    if DURATION <= 0 or DT <= 0 or ROBOT_RADIUS <= 0:
         raise ValueError("duration、dt 和 radius 必须为正")
-    if config.pixel_noise_std < 0 or config.process_angular_acceleration_std < 0:
+    if PIXEL_NOISE_STD < 0 or SIGMA_W < 0:
         raise ValueError("噪声标准差必须非负")
-    if config.x0.shape != (2,) or config.p0.shape != (2, 2) or config.r.shape != (1, 1):
+    if x0.shape != (2,) or p0.shape != (2, 2) or r.shape != (1, 1):
         raise ValueError("旋转场景要求 x0=(2,)、P0=(2,2)、R=(1,1)")
-    rng = np.random.default_rng(config.seed)
+    rng = np.random.default_rng(SEED)
     camera = Camera()
     solver = Solver(camera)
-    ekf = ExtendedKalmanFilter(config.x0, config.p0)
+    ekf = ExtendedKalmanFilter(x0, p0)
     visualizer = RerunVisualizer(
         "lecture5_rotation",
         ("angle", "angular_velocity"),
     )
     visualizer.log_camera(camera)
 
-    dt = config.dt
+    dt = DT
     transition = np.array([[1.0, dt], [0.0, 1.0]])
     observation_matrix = np.array([[1.0, 0.0]])
     noise_mapping = np.array([[0.5 * dt**2], [dt]])
-    q = noise_mapping @ noise_mapping.T * config.process_angular_acceleration_std**2
+    q = noise_mapping @ noise_mapping.T * SIGMA_W**2
 
     def f(state: FloatArray) -> FloatArray:
         return transition @ state
@@ -67,18 +81,18 @@ def run_demo(config: Config) -> None:
     def jacobian_h(state: FloatArray) -> FloatArray:
         return observation_matrix
 
-    timestamps = np.arange(0.0, config.duration, dt)
+    timestamps = np.arange(0.0, DURATION, dt)
     for index, timestamp in enumerate(timestamps):
-        angle = config.initial_angle + config.angular_velocity * timestamp
-        robot = Robot(np.array(config.position), float(angle), config.radius)
+        angle = INITIAL_ANGLE + ANGULAR_VELOCITY * timestamp
+        robot = Robot(np.array(POSITION), float(angle), ROBOT_RADIUS)
         armor = robot.observe(camera)
-        points = camera.project(armor) + rng.normal(0.0, config.pixel_noise_std, (4, 2))
+        points = camera.project(armor) + rng.normal(0.0, PIXEL_NOISE_STD, (4, 2))
         measured_angle, _ = solver.robot_measurement(points, armor.index, robot.radius)
         z = np.array([measured_angle])
         if index > 0:
             ekf.predict(f, jacobian_f, q)
         prediction = ekf.x.copy()
-        ekf.update(z, h, jacobian_h, config.r, residual=angle_residual)
+        ekf.update(z, h, jacobian_h, r, residual=angle_residual)
         # 滤波内部保留连续角度；展示时限制到 [0, 2π)，每圈回到零。
         visualizer.set_time(float(timestamp))
         visualizer.log_scalars(
@@ -87,7 +101,7 @@ def run_demo(config: Config) -> None:
                 "angle/prediction": limit_rad(float(prediction[0])),
                 "angle/estimate": limit_rad(float(ekf.x[0])),
                 "angle/measurement": limit_rad(measured_angle),
-                "angular_velocity/truth": config.angular_velocity,
+                "angular_velocity/truth": ANGULAR_VELOCITY,
                 "angular_velocity/prediction": float(prediction[1]),
                 "angular_velocity/estimate": float(ekf.x[1]),
             }
@@ -101,7 +115,7 @@ def run_demo(config: Config) -> None:
 
 
 def main() -> None:
-    run_demo(Config())
+    run_demo()
 
 
 if __name__ == "__main__":

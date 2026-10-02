@@ -1,7 +1,5 @@
 """入口一：固定 x，沿 y 轴匀速往返，比较 x/y 真值、预测与估计。"""
 
-from dataclasses import dataclass, field
-
 import numpy as np
 
 from aim.solver import Solver
@@ -10,66 +8,78 @@ from utils.ekf import ExtendedKalmanFilter, FloatArray
 from utils.visualizer import RerunVisualizer
 
 
-@dataclass
-class Config:
-    # 单位：米、秒、弧度。状态排列为 [x, vx, y, vy]。
-    duration: float = 10.0
-    dt: float = 1.0 / 60.0
-    seed: int = 42
-    initial_position: tuple[float, float, float] = (3.0, -0.8, 0.1)
-    y_limits: tuple[float, float] = (-0.8, 0.8)
-    translation_speed: float = 1.2
-    robot_yaw: float = 0.0
-    radius: float = 0.26
-    # x0 是滤波器的猜测；P0 对角线为方差，速度也可设置为未知。
-    x0: FloatArray = field(default_factory=lambda: np.array([2.5, 0.0, -0.2, 0.0]))
-    p0: FloatArray = field(
-        default_factory=lambda: np.diag([0.5**2, 1.0**2, 0.5**2, 1.0**2])
-    )
-    # 实际角点噪声：像素标准差；R 是解算后 x/y 量测的假设方差，两者不能直接等同。
-    pixel_noise_std: float = 1.0
-    r: FloatArray = field(default_factory=lambda: np.diag([0.03**2, 0.01**2]))
-    # Q = G diag(加速度标准差²) Gᵀ；换向时模型失配，较大的 y 轴 Q 加快响应。
-    process_acceleration_std: tuple[float, float] = (0.5, 3.0)
+# 状态顺序：[x, vx, y, vy]，单位分别为 m、m/s、m、m/s。
+
+# 1. 初始状态 X0
+X0: list[float] = [
+    2.5,  # 初始 x 位置 (m)
+    0.0,  # 初始 x 速度 (m/s)
+    -0.2,  # 初始 y 位置 (m)
+    0.0,  # 初始 y 速度 (m/s)
+]
+
+# 2. 初始协方差 P0 
+# 数值越大，表示越不相信对应的初始状态。
+P0_DIAG: list[float] = [0.25, 1.0, 0.25, 1.0]
+
+# 3. 过程噪声 Q
+# 数值越大，通常对运动变化响应越快；越小，通常更平滑但换向滞后更明显。
+SIGMA_VA: float = 1 # 加速度标准差 (m/s²)
+
+# 4. 量测协方差 R 
+# 数值越大，越不相信本帧量测；越小，越跟随量测。
+R_DIAG: list[float] = [0.03**2, 0.01**2]
 
 
-def translation_truth(config: Config, timestamp: float) -> FloatArray:
+PIXEL_NOISE_STD: float = 1.0
+DURATION: float = 10.0
+DT: float = 1.0 / 60.0
+SEED: int = 42
+INITIAL_POSITION: tuple[float, float, float] = (3.0, -0.8, 0.1)
+Y_LIMITS: tuple[float, float] = (-0.8, 0.8)
+TRANSLATION_SPEED: float = 1.2
+ROBOT_YAW: float = 0.0
+ROBOT_RADIUS: float = 0.26
+
+
+def translation_truth(timestamp: float) -> FloatArray:
     """三角波位置，端点立即反向；即使 dt 跨过端点也不越界。"""
-    lower, upper = config.y_limits
+    lower, upper = Y_LIMITS
     span = upper - lower
-    phase = (
-        config.initial_position[1] - lower + config.translation_speed * timestamp
-    ) % (2 * span)
+    phase = (INITIAL_POSITION[1] - lower + TRANSLATION_SPEED * timestamp) % (2 * span)
     if phase < span:
-        y, vy = lower + phase, config.translation_speed
+        y, vy = lower + phase, TRANSLATION_SPEED
     else:
-        y, vy = upper - (phase - span), -config.translation_speed
-    return np.array([config.initial_position[0], 0.0, y, vy])
+        y, vy = upper - (phase - span), -TRANSLATION_SPEED
+    return np.array([INITIAL_POSITION[0], 0.0, y, vy])
 
 
-def run_demo(config: Config) -> None:
-    if config.duration <= 0 or config.dt <= 0 or config.radius <= 0:
+def run_demo() -> None:
+    x0 = np.array(X0, dtype=float)
+    p0 = np.diag(P0_DIAG)
+    r = np.diag(R_DIAG)
+    if DURATION <= 0 or DT <= 0 or ROBOT_RADIUS <= 0:
         raise ValueError("duration、dt 和 radius 必须为正")
-    lower, upper = config.y_limits
-    if lower >= upper or not lower <= config.initial_position[1] <= upper:
+    lower, upper = Y_LIMITS
+    if lower >= upper or not lower <= INITIAL_POSITION[1] <= upper:
         raise ValueError("y_limits 必须递增，初始 y 必须在往返区间内")
-    if config.translation_speed <= 0:
+    if TRANSLATION_SPEED <= 0:
         raise ValueError("translation_speed 必须为正")
-    if config.pixel_noise_std < 0 or min(config.process_acceleration_std) < 0:
+    if PIXEL_NOISE_STD < 0 or SIGMA_VA < 0:
         raise ValueError("噪声标准差必须非负")
-    if config.x0.shape != (4,) or config.p0.shape != (4, 4) or config.r.shape != (2, 2):
+    if x0.shape != (4,) or p0.shape != (4, 4) or r.shape != (2, 2):
         raise ValueError("平移场景要求 x0=(4,)、P0=(4,4)、R=(2,2)")
-    rng = np.random.default_rng(config.seed)
+    rng = np.random.default_rng(SEED)
     camera = Camera()
     solver = Solver(camera)
-    ekf = ExtendedKalmanFilter(config.x0, config.p0)
+    ekf = ExtendedKalmanFilter(x0, p0)
     visualizer = RerunVisualizer(
         "lecture5_translation",
         ("x", "y"),
     )
     visualizer.log_camera(camera)
 
-    dt = config.dt
+    dt = DT
     # f(x) = F x：匀速模型。h(x) = H x：位姿解算后只观测位置。
     transition = np.array(
         [
@@ -83,11 +93,7 @@ def run_demo(config: Config) -> None:
     noise_mapping = np.array(
         [[0.5 * dt**2, 0.0], [dt, 0.0], [0.0, 0.5 * dt**2], [0.0, dt]]
     )
-    q = (
-        noise_mapping
-        @ np.diag(np.square(config.process_acceleration_std))
-        @ noise_mapping.T
-    )
+    q = noise_mapping @ np.diag(np.square((SIGMA_VA, SIGMA_VA))) @ noise_mapping.T
 
     def f(state: FloatArray) -> FloatArray:
         return transition @ state
@@ -101,16 +107,16 @@ def run_demo(config: Config) -> None:
     def jacobian_h(state: FloatArray) -> FloatArray:
         return observation_matrix
 
-    timestamps = np.arange(0.0, config.duration, dt)
+    timestamps = np.arange(0.0, DURATION, dt)
     for index, timestamp in enumerate(timestamps):
-        truth = translation_truth(config, float(timestamp))
+        truth = translation_truth(float(timestamp))
         robot = Robot(
-            np.array([truth[0], truth[2], config.initial_position[2]]),
-            config.robot_yaw,
-            config.radius,
+            np.array([truth[0], truth[2], INITIAL_POSITION[2]]),
+            ROBOT_YAW,
+            ROBOT_RADIUS,
         )
         armor = robot.observe(camera)
-        points = camera.project(armor) + rng.normal(0.0, config.pixel_noise_std, (4, 2))
+        points = camera.project(armor) + rng.normal(0.0, PIXEL_NOISE_STD, (4, 2))
         _, measured_position = solver.robot_measurement(
             points, armor.index, robot.radius
         )
@@ -118,7 +124,7 @@ def run_demo(config: Config) -> None:
         if index > 0:
             ekf.predict(f, jacobian_f, q)
         prediction = ekf.x.copy()  # x⁻：看到本帧量测之前的预测。
-        ekf.update(z, h, jacobian_h, config.r)
+        ekf.update(z, h, jacobian_h, r)
         visualizer.set_time(float(timestamp))
         visualizer.log_scalars(
             {
@@ -146,7 +152,7 @@ def run_demo(config: Config) -> None:
 
 
 def main() -> None:
-    run_demo(Config())
+    run_demo()
 
 
 if __name__ == "__main__":
