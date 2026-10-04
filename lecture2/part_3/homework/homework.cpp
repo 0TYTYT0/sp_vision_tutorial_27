@@ -11,7 +11,23 @@
 
 int main()
 {
-    // TODO: 在这里完成你的代码
-
-    return 0;
+  //1
+  cv::Mat img = cv::imread("assets/demo.jpg");
+  if (img.empty()) {
+    std::cout << "读取图片失败！请检查路径" << std::endl;
+    return -1;
+  }
+  //2
+  cv::Mat gray;
+  cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+  //3
+  cv::imwrite("gray.jpg", gray);
+  //4
+  cv::Point aim(gray.cols / 2, gray.rows / 2);
+  cv::circle(gray, aim, 80, cv::Scalar(255), 3);
+  //5
+  cv::imshow("gray", gray);
+  std::cout << "按任意建关闭窗口..." << std::endl;
+  cv::waitKey(0);
+  return 0;
 }
