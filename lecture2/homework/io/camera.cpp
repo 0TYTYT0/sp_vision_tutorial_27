@@ -80,26 +80,30 @@ camera::~camera()
 }
 int camera::read(cv::Mat & img_out)
 {
-  ret_ = MV_CC_StartGrabbing(handle_);
-  if (ret_ != MV_OK) {
-    return -1;
-  }
+  // ret_ = MV_CC_StartGrabbing(handle_);
+  // if (ret_ != MV_OK) {
+  //   return -1;
+  // }
 
-  MV_FRAME_OUT raw;
-  unsigned int nMsec = 100;
+  // MV_FRAME_OUT raw;
+  // unsigned int nMsec = 100;
 
-  ret_ = MV_CC_GetImageBuffer(handle_, &raw, nMsec);
-  if (ret_ != MV_OK) {
-    return -1;
-  }
+  // ret_ = MV_CC_GetImageBuffer(handle_, &raw, nMsec);
+  // if (ret_ != MV_OK) {
+  //   return -1;
+  // }
 
-  img_out = transfer(raw);
-  //   cv::imshow("img", img);
-  //   cv::waitKey(0);
+  // img_out = transfer(raw);
+  // //   cv::imshow("img", img);
+  // //   cv::waitKey(0);
 
-  ret_ = MV_CC_FreeImageBuffer(handle_, &raw);
-  if (ret_ != MV_OK) {
-    return -1;
-  }
+  // ret_ = MV_CC_FreeImageBuffer(handle_, &raw);
+  // if (ret_ != MV_OK) {
+  //   return -1;
+  // }
+  // return 0;
+  cv::Mat img_test;
+  img_test = cv::imread("r5.jpg");
+  img_out = img_test;
   return 0;
 }
