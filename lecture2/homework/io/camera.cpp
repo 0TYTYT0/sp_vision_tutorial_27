@@ -104,6 +104,10 @@ int camera::read(cv::Mat & img_out)
   // return 0;
   cv::Mat img_test;
   img_test = cv::imread("r5.jpg");
+  if (img_test.empty()) {
+    std::cout << "读取图片失败！请检查路径" << std::endl;
+    return -1;
+  }
   img_out = img_test;
   return 0;
 }
