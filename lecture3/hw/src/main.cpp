@@ -54,18 +54,18 @@ namespace
         }
         return options;
     }
-}
+}  // namespace
 
 int main(int argc, char **argv)
 {
     try
     {
         const Options options = parseOptions(argc, argv);
-        std::cout << "Mini Vision Pipeline\n====================\n\nWorkers: "
-                  << options.workers << "\n\n";
+        std::cout << "Mini Vision Pipeline\n====================\n\nWorkers: " << options.workers
+                  << "\n\n";
 
-        auto source = std::make_unique<ImageSequenceSource>(
-            options.input, options.producer_delay_ms);
+        auto source =
+            std::make_unique<ImageSequenceSource>(options.input, options.producer_delay_ms);
         Pipeline pipeline(std::move(source),
                           {options.workers, options.worker_delay_ms, options.output});
         pipeline.start();
@@ -79,12 +79,9 @@ int main(int argc, char **argv)
                   << "Corrupted: " << stats.corrupted << '\n'
                   << "--------------------------\n\n";
 
-        const bool passed = stats.produced > 0 &&
-                            stats.produced == stats.processed &&
-                            stats.processed == stats.saved &&
-                            stats.corrupted == 0;
-        std::cout << (passed ? "PASS: all checks passed\n"
-                             : "FAIL: pipeline checks failed\n");
+        const bool passed = stats.produced > 0 && stats.produced == stats.processed &&
+                            stats.processed == stats.saved && stats.corrupted == 0;
+        std::cout << (passed ? "PASS: all checks passed\n" : "FAIL: pipeline checks failed\n");
         return passed ? 0 : 1;
     }
     catch (const std::exception &error)

@@ -11,13 +11,12 @@ namespace
     bool isImage(const std::filesystem::path &path)
     {
         const auto extension = path.extension().string();
-        return extension == ".jpg" || extension == ".jpeg" ||
-               extension == ".png" || extension == ".ppm";
+        return extension == ".jpg" || extension == ".jpeg" || extension == ".png" ||
+               extension == ".ppm";
     }
-}
+}  // namespace
 
-ImageSequenceSource::ImageSequenceSource(std::filesystem::path directory,
-                                         int producer_delay_ms)
+ImageSequenceSource::ImageSequenceSource(std::filesystem::path directory, int producer_delay_ms)
     : producer_delay_ms_(producer_delay_ms)
 {
     if (!std::filesystem::is_directory(directory))
@@ -50,7 +49,7 @@ bool ImageSequenceSource::next(Frame &frame)
     {
         throw std::runtime_error("failed to read: " + paths_[next_index_].string());
     }
-    raw.copyTo(buffer_); // Simulates a camera-owned reusable buffer.
+    raw.copyTo(buffer_);  // Simulates a camera-owned reusable buffer.
 
     frame.id = static_cast<int>(next_index_++);
     frame.expected_checksum = checksum(buffer_);
