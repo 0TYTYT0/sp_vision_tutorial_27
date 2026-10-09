@@ -92,6 +92,7 @@ void Pipeline::producerLoop()
         logLine(std::cout, "[Producer] frame " + std::to_string(frame.id));
 
         // What's the best way to write this?
+        // queue_.push(std::move(frame));
         queue_.push(frame);
     }
     queue_.close();
