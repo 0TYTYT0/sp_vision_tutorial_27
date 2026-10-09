@@ -52,6 +52,11 @@ camera::camera()
   if (ret_ != MV_OK) {
     return;
   }
+  ret_ = MV_CC_StartGrabbing(handle_);
+  if (ret_ != MV_OK) {
+    std::cout << "StartGrabbing err" << std::endl;
+    return;
+  }
 
   MV_CC_SetEnumValue(handle_, "BalanceWhiteAuto", MV_BALANCEWHITE_AUTO_CONTINUOUS);
   MV_CC_SetEnumValue(handle_, "ExposureAuto", MV_EXPOSURE_AUTO_MODE_OFF);
@@ -80,34 +85,31 @@ camera::~camera()
 }
 int camera::read(cv::Mat & img_out)
 {
-  // ret_ = MV_CC_StartGrabbing(handle_);
-  // if (ret_ != MV_OK) {
-  //   return -1;
-  // }
+  MV_FRAME_OUT raw;
+  unsigned int nMsec = 100;
 
-  // MV_FRAME_OUT raw;
-  // unsigned int nMsec = 100;
-
-  // ret_ = MV_CC_GetImageBuffer(handle_, &raw, nMsec);
-  // if (ret_ != MV_OK) {
-  //   return -1;
-  // }
-
-  // img_out = transfer(raw);
-  // //   cv::imshow("img", img);
-  // //   cv::waitKey(0);
-
-  // ret_ = MV_CC_FreeImageBuffer(handle_, &raw);
-  // if (ret_ != MV_OK) {
-  //   return -1;
-  // }
-  // return 0;
-  cv::Mat img_test;
-  img_test = cv::imread("r5.jpg");
-  if (img_test.empty()) {
-    std::cout << "读取图片失败！请检查路径" << std::endl;
+  ret_ = MV_CC_GetImageBuffer(handle_, &raw, nMsec);
+  if (ret_ != MV_OK) {
+    std::cout << "GetImageBuffer err" << std::endl;
     return -1;
   }
-  img_out = img_test;
+
+  img_out = transfer(raw);
+  //   cv::imshow("img", img);
+  //   cv::waitKey(0);
+
+  ret_ = MV_CC_FreeImageBuffer(handle_, &raw);
+  if (ret_ != MV_OK) {
+    std::cout << "FreeImageBuffer err" << std::endl;
+    return -1;
+  }
   return 0;
+  // cv::Mat img_test;
+  // img_test = cv::imread("r5.jpg");
+  // if (img_test.empty()) {
+  //   std::cout << "读取图片失败！请检查路径" << std::endl;
+  //   return -1;
+  // }
+  // img_out = img_test;
+  // return 0;
 }

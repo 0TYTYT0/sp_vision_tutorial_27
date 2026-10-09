@@ -18,23 +18,20 @@ int main()
     }
     auto tags = yolo.detect(img);
     if (tags.empty()) {
-      continue;
+      // continue;
     }
-    int count = 0;
     for (const auto & tag : tags) {
       const auto & points = tag.corners;
       std::string name = std::to_string(tag.id);
 
       cv::Point2f text_point = points.front();
       tools::draw_points(img, points, cv::Scalar{0, 255, 0}, 10);
-      tools::draw_text(img, name, text_point, cv::Scalar{0, 255, 255}, 10, 10);
-      count++;
+      tools::draw_text(img, name, text_point, cv::Scalar{0, 255, 255}, 2, 5);
     }
-    std::cout << "count: " << count << std::endl;
 
     cv::resize(img, img, cv::Size(480, 640));
     cv::imshow("img", img);
-    if (cv::waitKey(0) == 'q') {
+    if (cv::waitKey(1) == 'q') {
       break;
     }
   }

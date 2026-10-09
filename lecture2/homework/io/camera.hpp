@@ -9,5 +9,5 @@ public:
 
 private:
   void * handle_;
-  int ret_;
+  unsigned int ret_;
 };

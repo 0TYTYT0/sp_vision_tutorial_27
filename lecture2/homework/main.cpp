@@ -17,7 +17,7 @@ int main()
     }
     auto armors = yolo.detect(img);
     if (armors.empty()) {
-      continue;
+      // continue;
     }
 
     for (const auto & armor : armors) {
@@ -26,16 +26,16 @@ int main()
       std::string name = "";
       switch (armor.color) {
         case auto_aim::Color::blue:
-          name.append("B");
+          name.append("B ");
           break;
         case auto_aim::Color::extinguish:
-          name.append("E");
+          name.append("DEAD ");
           break;
         case auto_aim::Color::red:
-          name.append("R");
+          name.append("R ");
           break;
         case auto_aim::Color::purple:
-          name.append("P");
+          name.append("P ");
           break;
         default:
           break;
@@ -68,12 +68,12 @@ int main()
       }
       cv::Point2f text_point = points.front();
       tools::draw_points(img, points, cv::Scalar{0, 255, 0}, 10);
-      tools::draw_text(img, name, text_point, cv::Scalar{0, 255, 255}, 10, 10);
+      tools::draw_text(img, name, text_point, cv::Scalar{0, 255, 255}, 2, 5);
     }
 
     cv::resize(img, img, cv::Size(480, 640));
     cv::imshow("img", img);
-    if (cv::waitKey(0) == 'q') {
+    if (cv::waitKey(1) == 'q') {
       break;
     }
   }
