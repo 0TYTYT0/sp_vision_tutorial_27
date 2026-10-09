@@ -20,7 +20,7 @@ namespace
         std::lock_guard<std::mutex> lock(output_mutex);
         output << message << '\n';
     }
-}
+}  // namespace
 
 Pipeline::Pipeline(std::unique_ptr<FrameSource> source, PipelineConfig config)
     : source_(std::move(source)), config_(std::move(config))
@@ -38,6 +38,18 @@ Pipeline::Pipeline(std::unique_ptr<FrameSource> source, PipelineConfig config)
 Pipeline::~Pipeline()
 {
     // TODO: Make sure Pipeline never destroys running threads.
+    if (producer_.joinable())
+    {
+        producer_.join();
+    }
+    queue_.close();
+    for (auto &worker : workers_)
+    {
+        if (worker.joinable())
+        {
+            worker.join();
+        }
+    }
 }
 
 void Pipeline::start()
@@ -46,11 +58,9 @@ void Pipeline::start()
     workers_.reserve(static_cast<std::size_t>(config_.worker_count));
     for (int i = 0; i < config_.worker_count; ++i)
     {
-        workers_.emplace_back([this, i]
-                              { workerLoop(i); });
+        workers_.emplace_back([this, i] { workerLoop(i); });
     }
-    producer_ = std::thread([this]
-                            { producerLoop(); });
+    producer_ = std::thread([this] { producerLoop(); });
 }
 
 void Pipeline::wait()
@@ -94,22 +104,19 @@ void Pipeline::workerLoop(int worker_id)
     {
         if (config_.worker_delay_ms > 0)
         {
-            std::this_thread::sleep_for(
-                std::chrono::milliseconds(config_.worker_delay_ms));
+            std::this_thread::sleep_for(std::chrono::milliseconds(config_.worker_delay_ms));
         }
 
         if (checksum(frame.image) != frame.expected_checksum)
         {
             statistics_.onCorrupted();
-            logLine(std::cerr,
-                    "[Worker " + std::to_string(worker_id) + "] ERROR: frame " +
-                        std::to_string(frame.id) + " data changed before processing");
+            logLine(std::cerr, "[Worker " + std::to_string(worker_id) + "] ERROR: frame " +
+                                   std::to_string(frame.id) + " data changed before processing");
             continue;
         }
 
-        logLine(std::cout,
-                "[Worker " + std::to_string(worker_id) + "] processing frame " +
-                    std::to_string(frame.id));
+        logLine(std::cout, "[Worker " + std::to_string(worker_id) + "] processing frame " +
+                               std::to_string(frame.id));
         const cv::Mat output = processor_.process(frame);
         statistics_.onProcessed();
 

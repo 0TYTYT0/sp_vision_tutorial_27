@@ -39,6 +39,6 @@ void Statistics::onCorrupted()
 
 StatisticsSnapshot Statistics::snapshot() const
 {
-    std::lock_guard<std::mutex> lock(statistics_mutex);
+    // std::lock_guard<std::mutex> lock(statistics_mutex);
     return {produced_, processed_, saved_, corrupted_};
 }
